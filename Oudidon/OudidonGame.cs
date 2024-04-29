@@ -147,7 +147,7 @@ namespace Oudidon
 
         protected virtual void InitStateMachine() { }
 
-        protected void AddSate(string name, Action onEnter = null, Action onExit = null, Action<GameTime, float> onUpdate = null, Action<SpriteBatch, GameTime> onDraw = null)
+        protected void AddState(string name, Action onEnter = null, Action onExit = null, Action<GameTime, float> onUpdate = null, Action<SpriteBatch, GameTime> onDraw = null)
         {
             _stateMachine.AddState(name, onEnter, onExit, onUpdate, onDraw);
         }

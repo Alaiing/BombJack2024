@@ -90,6 +90,15 @@ namespace BombJack2024
             {
                 MoveTo(new Vector2(BombJack2024.PLAYGROUND_WIDTH - SpriteSheet.RightMargin, Position.Y));
             }
+
+            if (TestBombCollision(out int index))
+            {
+                if (_currentLevel.PickUpBomb(index))
+                {
+                    // TODO: scoring
+                    EventsManager.FireEvent(BombJack2024.EVENT_ALL_BOMBS_COLLECTED);
+                }
+            }
         }
 
         public void Fall()
@@ -100,7 +109,7 @@ namespace BombJack2024
         #region States
         private void WalkEnter()
         {
-            _drawnFrame = 0;
+            _drawnFrame = 4;
         }
 
         private void WalkUpdate(GameTime time, float arg2)
@@ -223,7 +232,7 @@ namespace BombJack2024
         {
             foreach (Platform platform in _currentLevel.Plateforms)
             {
-                if (platform.Bounds.Contains(Position - new Vector2(SpriteSheet.LeftMargin, -1 ))
+                if (platform.Bounds.Contains(Position - new Vector2(SpriteSheet.LeftMargin, -1))
                     || platform.Bounds.Contains(Position + new Vector2(SpriteSheet.RightMargin, 1)))
                 {
                     hitPlatform = platform;
@@ -271,14 +280,30 @@ namespace BombJack2024
 
         private bool TestCollision()
         {
-            Vector2 topLeft = Position - SpriteSheet.DefaultPivot.ToVector2();
-            Rectangle bounds = new Rectangle(new Point((int)topLeft.X, (int)topLeft.Y), new Point(SpriteSheet.FrameWidth, SpriteSheet.FrameHeight -1));
+            Rectangle bounds = GetBounds();
+            bounds.Y += 3;
+            bounds.Height -= 3;
             foreach (Platform plateform in _currentLevel.Plateforms)
             {
                 if (MathUtils.OverlapsWith(bounds, plateform.Bounds))
                     return true;
             }
 
+            return false;
+        }
+        private bool TestBombCollision(out int index)
+        {
+            Rectangle bounds = GetBounds();
+            for (int i = 0; i < _currentLevel.Bombs.Count; i++)
+            {
+                Bomb bomb = _currentLevel.Bombs[i];
+                if (bomb.Enabled && MathUtils.OverlapsWith(bounds, bomb.GetBounds()))
+                {
+                    index = i;
+                    return true;
+                }
+            }
+            index = -1;
             return false;
         }
         #endregion

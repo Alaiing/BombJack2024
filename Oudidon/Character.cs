@@ -33,6 +33,7 @@ namespace Oudidon
         protected float _animationSpeedMultiplier;
         private float _animationDirection;
         private string _currentAnimationName;
+        public string CurrentAnimationName => _currentAnimationName;
         private SpriteSheet.Animation _currentAnimation;
 
         private Action _onAnimationEnd;
@@ -50,7 +51,7 @@ namespace Oudidon
 
         public virtual Rectangle GetBounds()
         {
-            return new Rectangle(PixelPositionX - SpriteSheet.LeftMargin, PixelPositionY - SpriteSheet.TopMargin, SpriteSheet.FrameWidth, SpriteSheet.FrameHeight);
+            return new Rectangle(PixelPositionX - SpriteSheet.LeftMargin, PixelPositionY - SpriteSheet.TopMargin, SpriteSheet.FrameWidth - 1, SpriteSheet.FrameHeight - 1);
         }
 
         public void Activate()
