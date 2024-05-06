@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Oudidon;
 using System;
 using System.Collections.Generic;
@@ -22,6 +23,13 @@ namespace BombJack2024
         private int _maxJumpHeight = 180;
         private float _spriteChangeValue = 1.3f;
 
+        private SoundEffect _jumpSound;
+        private SoundEffectInstance _jumpSoundInstance;
+        private SoundEffect _platformSound;
+        private SoundEffectInstance _platformSoundInstance;
+        private float _jumpSoundCooldown;
+        private float _jumpSoundTimer;
+
         private Level _currentLevel;
 
         public BombJack(SpriteSheet spriteSheet, Game game) : base(spriteSheet, game)
@@ -43,6 +51,17 @@ namespace BombJack2024
             SetSpeedMultiplier(1f);
         }
 
+        protected override void LoadContent()
+        {
+            _jumpSound = Game.Content.Load<SoundEffect>("bl");
+            _jumpSoundInstance = _jumpSound.CreateInstance();
+            _jumpSoundInstance.Volume = 0.5f;
+            _jumpSoundCooldown = (float)_jumpSound.Duration.TotalSeconds / 2;
+
+            _platformSound = Game.Content.Load<SoundEffect>("boing");
+            _platformSoundInstance = _platformSound.CreateInstance();
+        }
+
         public void SetLevel(Level level)
         {
             _currentLevel = level;
@@ -53,6 +72,7 @@ namespace BombJack2024
             SpriteSheet.DrawFrame((int)Math.Floor(_drawnFrame), SpriteBatch, Position, SpriteSheet.DefaultPivot, 0, CurrentScale, Color.White);
         }
 
+        int previousY;
         public override void Update(GameTime gameTime)
         {
             base.Update(gameTime);
@@ -76,11 +96,15 @@ namespace BombJack2024
 
             if (TestCollision())
             {
+                SoundEffectInstance platformSoundInstance = _platformSound.CreateInstance();
+                platformSoundInstance.Pan = CommonRandom.Random.Next(-1, 2);
+                platformSoundInstance.Play();
                 MoveDirection.X = 0;
             }
 
             _stateMachine.Update(gameTime);
-            Move((float)gameTime.ElapsedGameTime.TotalSeconds);
+            float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            Move(deltaTime);
 
             if (Position.X - SpriteSheet.LeftMargin < 0)
             {
@@ -99,11 +123,30 @@ namespace BombJack2024
                     EventsManager.FireEvent(BombJack2024.EVENT_ALL_BOMBS_COLLECTED);
                 }
             }
+
+            _jumpSoundTimer -= deltaTime;
+            if (_jumpSoundTimer <= 0 && previousY != PixelPositionY
+                && (_stateMachine.CurrentState == JUMP_STATE || _stateMachine.CurrentState == FALL_STATE))
+            {
+                _jumpSoundInstance.Stop();
+                float pitch = MathHelper.Lerp(-1.0f, 1.0f, 1 - (float)PixelPositionY / BombJack2024.PLAYGROUND_HEIGHT);
+                _jumpSoundInstance.Pitch = pitch;
+                _jumpSoundInstance.Play();
+                _jumpSoundTimer = _jumpSoundCooldown;
+            }
+            previousY = PixelPositionY;
         }
 
         public void Fall()
         {
             _stateMachine.SetState(FALL_STATE);
+        }
+
+        public void PlatformSound()
+        {
+            _platformSoundInstance.Pan = CommonRandom.Random.Next(-1, 2);
+            _platformSoundInstance.Stop();
+            _platformSoundInstance.Play();
         }
 
         #region States
@@ -179,6 +222,7 @@ namespace BombJack2024
             if (IsUnderPlatform())
             {
                 _stateMachine.SetState(FALL_STATE);
+                PlatformSound();
                 return;
             }
 
@@ -217,6 +261,7 @@ namespace BombJack2024
             if (IsOnPlatform(out Platform platform))
             {
                 MoveTo(new Vector2(Position.X, platform.Bounds.Y));
+                PlatformSound();
                 _stateMachine.SetState(WALK_STATE);
                 return;
             }

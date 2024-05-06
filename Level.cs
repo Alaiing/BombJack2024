@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Oudidon;
 using System;
@@ -18,6 +19,10 @@ namespace BombJack2024
         private bool _bombLit;
         private int _bombsFound;
 
+        private SoundEffect _bombPickupUnlit;
+        private SoundEffectInstance _bombPickupUnlitInstance;
+        private SoundEffect _bombPickupLit;
+        private SoundEffectInstance _bombPickupLitInstance;
         private int _backgroundIndex;
         public int BackgroundIndex => _backgroundIndex;
 
@@ -28,6 +33,11 @@ namespace BombJack2024
             _bombSheet = new SpriteSheet(game.Content, "bomb", 6, 13, Point.Zero);
             _bombSheet.RegisterAnimation(Bomb.ANIMATION_IDLE, 0, 0, 1);
             _bombSheet.RegisterAnimation(Bomb.ANIMATION_LIT, 1, 2, 20f);
+
+            _bombPickupUnlit = game.Content.Load<SoundEffect>("zboui");
+            _bombPickupUnlitInstance = _bombPickupUnlit.CreateInstance();
+            _bombPickupLit = game.Content.Load<SoundEffect>("piou");
+            _bombPickupLitInstance = _bombPickupLit.CreateInstance();
 
             LoadData(asset);
         }
@@ -100,6 +110,11 @@ namespace BombJack2024
         {
             _bombs[index].Deactivate();
             _bombsFound++;
+
+            SoundEffectInstance soundInstance = _bombs[index].IsLit ? _bombPickupLit.CreateInstance() : _bombPickupUnlit.CreateInstance();
+
+            soundInstance.Pan = CommonRandom.Random.Next(-1, 2);
+            soundInstance.Play();
 
             if (_bombsFound == _bombs.Count)
             {

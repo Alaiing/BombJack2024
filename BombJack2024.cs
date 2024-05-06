@@ -22,6 +22,8 @@ namespace BombJack2024
 
         private BombJack _bombJack;
 
+        private Bird _bird;
+
         private Texture2D[] _levelBackgrounds;
         private Texture2D _hud;
         private Texture2D _title;
@@ -57,6 +59,12 @@ namespace BombJack2024
             Components.Add(_bombJack);
             _bombJack.Deactivate();
 
+            SpriteSheet birdSprite = new SpriteSheet(Content, "bird", 7, 10, new Point(4, 9));
+            birdSprite.AddLayer(Content, "bird_eye");
+            _bird = new Bird(birdSprite, this);
+            Components.Add(_bird);
+            _bird.Deactivate();
+
             _levelBackgrounds = new Texture2D[2];
             _levelBackgrounds[0] = Content.Load<Texture2D>("egypt");
             _levelBackgrounds[1] = Content.Load<Texture2D>("greece");
@@ -91,6 +99,9 @@ namespace BombJack2024
         public void StartBombJack()
         {
             _bombJack.Activate();
+            _bird.SetBombJack(_bombJack);
+            _bird.MoveTo(new Vector2(110, 10));
+            _bird.Activate();
         }
 
         public void NextLevel()
