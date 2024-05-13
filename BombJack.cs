@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Audio;
 using Oudidon;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,17 +12,26 @@ namespace BombJack2024
 {
     public class BombJack : Character
     {
-        private static string WALK_STATE = "Walk";
-        private static string JUMP_STATE = "Jump";
-        private static string FALL_STATE = "Fall";
+        public const string DIE_EVENT = "Die";
+
+        private const string WALK_STATE = "Walk";
+        private const string JUMP_STATE = "Jump";
+        private const string FALL_STATE = "Fall";
+        private const string DIE_STATE = "Die";
 
         private SimpleStateMachine _stateMachine;
         private float _drawnFrame;
         private float _walkAnimationSpeed = 10f;
-        private float _jumpDuration = 1f;
-        private int _jumpHeight = 128;
-        private int _maxJumpHeight = 180;
+        private const float JUMP_DURATION = 1f;
+        private const float DIE_JUMP_DURATION = 0.25f;
+        private const float DIE_DURATION = 1f;
+        private const int JUMP_HEIGHT = 128;
+        private const int MAX_JUMP_HEIGHT = 180;
+        private const int DIE_JUMP_HEIGHT = 10;
+        private int _minJumpHeight;
+        private int _maxJumpHeight;
         private float _spriteChangeValue = 1.3f;
+
 
         private SoundEffect _jumpSound;
         private SoundEffectInstance _jumpSoundInstance;
@@ -44,6 +54,7 @@ namespace BombJack2024
             _stateMachine.AddState(WALK_STATE, OnEnter: WalkEnter, OnUpdate: WalkUpdate);
             _stateMachine.AddState(JUMP_STATE, OnEnter: JumpEnter, OnUpdate: JumpUpdate);
             _stateMachine.AddState(FALL_STATE, OnEnter: FallEnter, OnUpdate: FallUpdate);
+            _stateMachine.AddState(DIE_STATE, OnEnter: DieEnter, OnUpdate: DieUpdate);
 
             _stateMachine.SetState(WALK_STATE);
 
@@ -72,11 +83,28 @@ namespace BombJack2024
             SpriteSheet.DrawFrame((int)Math.Floor(_drawnFrame), SpriteBatch, Position, SpriteSheet.DefaultPivot, 0, CurrentScale, Color.White);
         }
 
-        int previousY;
+        private int _previousY;
         public override void Update(GameTime gameTime)
         {
             base.Update(gameTime);
 
+            _stateMachine.Update(gameTime);
+
+            _jumpSoundTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (_jumpSoundTimer <= 0 && _previousY != PixelPositionY
+                /*&& (_stateMachine.CurrentState == JUMP_STATE || _stateMachine.CurrentState == FALL_STATE)*/)
+            {
+                _jumpSoundInstance.Stop();
+                float pitch = Math.Clamp(MathHelper.Lerp(-1.0f, 1.0f, 1 - (float)PixelPositionY / BombJack2024.PLAYGROUND_HEIGHT), -1f, 1);
+                _jumpSoundInstance.Pitch = pitch;
+                _jumpSoundInstance.Play();
+                _jumpSoundTimer = _jumpSoundCooldown;
+            }
+            _previousY = PixelPositionY;
+        }
+
+        private bool AliveUpdate(GameTime gameTime)
+        {
             SimpleControls.GetStates();
 
             if (SimpleControls.IsLeftDown(PlayerIndex.One))
@@ -94,7 +122,7 @@ namespace BombJack2024
                 MoveDirection.X = 0;
             }
 
-            if (TestCollision())
+            if (_currentLevel.TestPlatformCollision(this))
             {
                 SoundEffectInstance platformSoundInstance = _platformSound.CreateInstance();
                 platformSoundInstance.Pan = CommonRandom.Random.Next(-1, 2);
@@ -102,7 +130,6 @@ namespace BombJack2024
                 MoveDirection.X = 0;
             }
 
-            _stateMachine.Update(gameTime);
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
             Move(deltaTime);
 
@@ -124,22 +151,38 @@ namespace BombJack2024
                 }
             }
 
-            _jumpSoundTimer -= deltaTime;
-            if (_jumpSoundTimer <= 0 && previousY != PixelPositionY
-                && (_stateMachine.CurrentState == JUMP_STATE || _stateMachine.CurrentState == FALL_STATE))
+            if (TestEnemyCollision())
             {
-                _jumpSoundInstance.Stop();
-                float pitch = MathHelper.Lerp(-1.0f, 1.0f, 1 - (float)PixelPositionY / BombJack2024.PLAYGROUND_HEIGHT);
-                _jumpSoundInstance.Pitch = pitch;
-                _jumpSoundInstance.Play();
-                _jumpSoundTimer = _jumpSoundCooldown;
+                Die();
+                return false;
             }
-            previousY = PixelPositionY;
+
+            return true;
         }
 
         public void Fall()
         {
             _stateMachine.SetState(FALL_STATE);
+        }
+
+        public void Jump(int jumpHeight, int maxJumpHeight)
+        {
+            _minJumpHeight = jumpHeight;
+            _maxJumpHeight = maxJumpHeight;
+
+            _stateMachine.SetState(JUMP_STATE);
+        }
+
+        public void Die()
+        {
+            if (_stateMachine.CurrentState == WALK_STATE)
+            {
+                EventsManager.FireEvent(DIE_EVENT);
+                _previousY = PixelPositionY;
+                return;
+            }
+
+            _stateMachine.SetState(DIE_STATE);
         }
 
         public void PlatformSound()
@@ -157,6 +200,11 @@ namespace BombJack2024
 
         private void WalkUpdate(GameTime time, float arg2)
         {
+            if (!AliveUpdate(time))
+            {
+                return;
+            }
+
             if (!IsOnGround() && !IsOnPlatform(out Platform _))
             {
                 Fall();
@@ -170,7 +218,7 @@ namespace BombJack2024
 
             if (SimpleControls.IsAPressedThisFrame(PlayerIndex.One))
             {
-                _stateMachine.SetState(JUMP_STATE);
+                Jump(JUMP_HEIGHT, MAX_JUMP_HEIGHT);
             }
         }
 
@@ -188,6 +236,11 @@ namespace BombJack2024
 
         private void JumpUpdate(GameTime time, float arg2)
         {
+            if (!AliveUpdate(time))
+            {
+                return;
+            }
+
             if (_inAirTimer > 0 && CheckGlide())
                 return;
 
@@ -208,13 +261,13 @@ namespace BombJack2024
 
             _drawnFrame = 2 + frameOffset;
 
-            float currentJumpHeight = MathHelper.Lerp(_jumpHeight, _maxJumpHeight, _boostTimer / _jumpDuration);
+            float currentJumpHeight = MathHelper.Lerp(_minJumpHeight, _maxJumpHeight, _boostTimer / JUMP_DURATION);
 
-            float height = MathUtils.NormalizedParabolicPosition(_inAirTimer / _jumpDuration / 2) * currentJumpHeight;
+            float height = MathUtils.NormalizedParabolicPosition(_inAirTimer / JUMP_DURATION / 2) * currentJumpHeight;
 
             MoveTo(new Vector2(Position.X, _inAirStartHeight - height));
 
-            if (_inAirTimer >= _jumpDuration)
+            if (_inAirTimer >= JUMP_DURATION)
             {
                 _stateMachine.SetState(FALL_STATE);
             }
@@ -235,12 +288,17 @@ namespace BombJack2024
 
         private void FallEnter()
         {
-            _inAirTimer = _jumpDuration;
+            _inAirTimer = JUMP_DURATION;
             _inAirStartHeight = Position.Y;
         }
 
         private void FallUpdate(GameTime time, float arg2)
         {
+            if (!AliveUpdate(time))
+            {
+                return;
+            }
+
             if (CheckGlide())
                 return;
 
@@ -252,9 +310,9 @@ namespace BombJack2024
                 frameOffset = 1;
             }
 
-            _drawnFrame = (_inAirTimer / _jumpDuration > _spriteChangeValue ? 4 : 2) + frameOffset;
+            _drawnFrame = (_inAirTimer / JUMP_DURATION > _spriteChangeValue ? 4 : 2) + frameOffset;
 
-            float height = (1 - MathUtils.NormalizedParabolicPosition(_inAirTimer / _jumpDuration / 2)) * _jumpHeight;
+            float height = (1 - MathUtils.NormalizedParabolicPosition(_inAirTimer / JUMP_DURATION / 2)) * JUMP_HEIGHT;
 
             MoveTo(new Vector2(Position.X, _inAirStartHeight + height));
 
@@ -270,6 +328,24 @@ namespace BombJack2024
             {
                 MoveTo(new Vector2(Position.X, BombJack2024.PLAYGROUND_HEIGHT));
                 _stateMachine.SetState(WALK_STATE);
+            }
+        }
+
+        private void DieEnter()
+        {
+            MoveDirection = Vector2.Zero;
+            _inAirStartHeight = Position.Y;
+        }
+
+        private void DieUpdate(GameTime time, float stateTime)
+        {
+            float height = MathUtils.NormalizedParabolicPosition(stateTime / DIE_JUMP_DURATION / 2) * DIE_JUMP_HEIGHT;
+
+            MoveTo(new Vector2(Position.X, _inAirStartHeight - height));
+
+            if (stateTime > DIE_DURATION)
+            {
+                EventsManager.FireEvent(DIE_EVENT);
             }
         }
 
@@ -323,19 +399,6 @@ namespace BombJack2024
             return false;
         }
 
-        private bool TestCollision()
-        {
-            Rectangle bounds = GetBounds();
-            bounds.Y += 3;
-            bounds.Height -= 3;
-            foreach (Platform plateform in _currentLevel.Plateforms)
-            {
-                if (MathUtils.OverlapsWith(bounds, plateform.Bounds))
-                    return true;
-            }
-
-            return false;
-        }
         private bool TestBombCollision(out int index)
         {
             Rectangle bounds = GetBounds();
@@ -351,6 +414,22 @@ namespace BombJack2024
             index = -1;
             return false;
         }
+
+        private bool TestEnemyCollision()
+        {
+            Rectangle bounds = GetBounds();
+            for (int i = 0; i < _currentLevel.Enemies.Count; i++)
+            {
+                Enemy enemy = _currentLevel.Enemies[i];
+                if (enemy.Enabled && MathUtils.OverlapsWith(bounds, enemy.GetBounds()))
+                {
+                    return true;
+                }
+            }
+            return false;
+
+        }
+
         #endregion
     }
 }

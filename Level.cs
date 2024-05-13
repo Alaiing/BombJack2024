@@ -12,10 +12,16 @@ namespace BombJack2024
     {
         private OudidonGame _game;
         private SpriteSheet _bombSheet;
+
         private readonly List<Platform> _platforms = new();
         public List<Platform> Plateforms => _platforms;
+
         private readonly List<Bomb> _bombs = new();
         public List<Bomb> Bombs => _bombs;
+
+        private readonly List<Enemy> _enemies = new();
+        public List<Enemy> Enemies => _enemies;
+
         private bool _bombLit;
         private int _bombsFound;
 
@@ -25,6 +31,16 @@ namespace BombJack2024
         private SoundEffectInstance _bombPickupLitInstance;
         private int _backgroundIndex;
         public int BackgroundIndex => _backgroundIndex;
+
+        private static Bird _bird;
+        private static Point[] _birdStartPositions = new Point[]
+        {
+            new Point(116,184 + 9), // bottom right
+            new Point(116,20 + 8), // top right
+            new Point(6,7 + 9), // top left
+            new Point(6,184 + 9), // bottom left
+        };
+
 
         public Level(OudidonGame game, string asset)
         {
@@ -40,6 +56,31 @@ namespace BombJack2024
             _bombPickupLitInstance = _bombPickupLit.CreateInstance();
 
             LoadData(asset);
+        }
+
+        public void Start(BombJack bombJack)
+        {
+            int positionIndex = CommonRandom.Random.Next(_birdStartPositions.Length);
+            _bird.MoveTo(_birdStartPositions[positionIndex].ToVector2());
+            _bird.SetBombJack(bombJack);
+            AddEnemy(_bird);
+        }
+
+        public void Update()
+        {
+            // TODO: spawn robots
+        }
+
+        public void Reset()
+        {
+            _bombsFound = 0;
+            ResetBombs();
+        }
+
+        public void Restart()
+        {
+            TurnOffBombs();
+            ClearEnemies();
         }
 
         public void LoadData(string dataPath)
@@ -92,6 +133,13 @@ namespace BombJack2024
             {
                 Debug.WriteLine(e);
             }
+
+            if (_bird == null)
+            {
+                SpriteSheet birdSprite = new SpriteSheet(_game.Content, "bird", 7, 10, new Point(4, 9));
+                birdSprite.AddLayer(_game.Content, "bird_eye");
+                _bird = new Bird(birdSprite, _game);
+            }
         }
 
         public void AddPlatform(Point position, int size, bool horizontal = true)
@@ -104,6 +152,24 @@ namespace BombJack2024
         {
             _bombs.Add(bomb);
             bomb.MoveTo(new Vector2(x, y));
+        }
+
+        private void AddEnemy(Enemy enemy)
+        {
+            _enemies.Add(enemy);
+            _game.Components.Add(enemy);
+            enemy.Activate();
+        }
+
+        private void ClearEnemies()
+        {
+            foreach (Enemy enemy in _enemies)
+            {
+                enemy.Deactivate();
+                _game.Components.Remove(enemy);
+            }
+
+            _enemies.Clear();
         }
 
         public bool PickUpBomb(int index)
@@ -128,7 +194,7 @@ namespace BombJack2024
                     int roundIndex = (index + i) % _bombs.Count;
                     if (_bombs[roundIndex].Enabled)
                     {
-                        _bombs[roundIndex].Light();
+                        _bombs[roundIndex].TurnOn();
                         _bombLit = true;
                         return false;
                     }
@@ -138,8 +204,28 @@ namespace BombJack2024
             return false;
         }
 
+        private void ResetBombs()
+        {
+            _bombLit = false;
+            foreach (Bomb bomb in _bombs)
+            {
+                bomb.TurnOff();
+                bomb.Activate();
+            }
+        }
+
+        private void TurnOffBombs()
+        {
+            _bombLit = false;
+            foreach (Bomb bomb in _bombs)
+            {
+                bomb.TurnOff();
+            }
+        }
+
         public void Activate()
         {
+            _bird.CurrentLevel = this;
             foreach (Platform plateform in _platforms)
             {
                 _game.Components.Add(plateform);
@@ -162,6 +248,23 @@ namespace BombJack2024
             {
                 _game.Components.Remove(bomb);
             }
+
+            _bird.Deactivate();
         }
+
+        public bool TestPlatformCollision(Character character)
+        {
+            Rectangle bounds = character.GetBounds();
+            bounds.Y += 3;
+            bounds.Height -= 3;
+            foreach (Platform platform in Plateforms)
+            {
+                if (MathUtils.OverlapsWith(bounds, platform.Bounds))
+                    return true;
+            }
+
+            return false;
+        }
+
     }
 }

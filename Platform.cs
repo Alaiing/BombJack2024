@@ -45,6 +45,7 @@ namespace BombJack2024
             Game.SpriteBatch.Draw(_leftTexture, new Vector2(_position.X, _position.Y), Color.White);
             Game.SpriteBatch.Draw(_innerTexture, new Rectangle(_position.X + 1, _position.Y, _size - 1, _innerTexture.Height), Color.White);
             Game.SpriteBatch.Draw(_rightTexture, new Vector2(_position.X + _size, _position.Y), Color.White);
+            //Game.SpriteBatch.DrawRectangle(_bounds, Color.Red);
         }
     }
 }

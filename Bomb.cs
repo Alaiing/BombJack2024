@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using Newtonsoft.Json.Bson;
 using Oudidon;
 using System;
 using System.Collections.Generic;
@@ -18,12 +19,17 @@ namespace BombJack2024
 
         public Bomb(SpriteSheet spriteSheet, Game game) : base(spriteSheet, game)
         {
-            SetAnimation(ANIMATION_IDLE);
+            TurnOff();
         }
 
-        public void Light()
+        public void TurnOn()
         {
             SetAnimation(ANIMATION_LIT);
+        }
+
+        public void TurnOff()
+        {
+            SetAnimation(ANIMATION_IDLE);
         }
     }
 }

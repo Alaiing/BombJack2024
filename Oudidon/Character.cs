@@ -51,7 +51,7 @@ namespace Oudidon
 
         public virtual Rectangle GetBounds()
         {
-            return new Rectangle(PixelPositionX - SpriteSheet.LeftMargin, PixelPositionY - SpriteSheet.TopMargin, SpriteSheet.FrameWidth - 1, SpriteSheet.FrameHeight - 1);
+            return new Rectangle(PixelPositionX - (CurrentScale.X > 0 ? SpriteSheet.LeftMargin : SpriteSheet.RightMargin), PixelPositionY - (CurrentScale.Y > 0 ? SpriteSheet.TopMargin : SpriteSheet.BottomMargin), SpriteSheet.FrameWidth - 1, SpriteSheet.FrameHeight - 1);
         }
 
         public void Activate()

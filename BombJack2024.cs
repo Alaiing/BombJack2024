@@ -22,8 +22,6 @@ namespace BombJack2024
 
         private BombJack _bombJack;
 
-        private Bird _bird;
-
         private Texture2D[] _levelBackgrounds;
         private Texture2D _hud;
         private Texture2D _title;
@@ -37,6 +35,7 @@ namespace BombJack2024
         {
             // TODO: Add your initialization logic here
             EventsManager.ListenTo(EVENT_ALL_BOMBS_COLLECTED, OnAllBombsCollected);
+            EventsManager.ListenTo(BombJack.DIE_EVENT, OnBombJackDie);
 
             base.Initialize();
         }
@@ -59,12 +58,6 @@ namespace BombJack2024
             Components.Add(_bombJack);
             _bombJack.Deactivate();
 
-            SpriteSheet birdSprite = new SpriteSheet(Content, "bird", 7, 10, new Point(4, 9));
-            birdSprite.AddLayer(Content, "bird_eye");
-            _bird = new Bird(birdSprite, this);
-            Components.Add(_bird);
-            _bird.Deactivate();
-
             _levelBackgrounds = new Texture2D[2];
             _levelBackgrounds[0] = Content.Load<Texture2D>("egypt");
             _levelBackgrounds[1] = Content.Load<Texture2D>("greece");
@@ -83,13 +76,13 @@ namespace BombJack2024
 
         public void StartGame()
         {
-            _currentLevelIndex = 0;
-            SetState(STATE_LEVEL_INTRO);
+            _currentLevelIndex = -1;
+            NextLevel();
         }
 
         public void StartLevel(int index)
         {
-            _levels[index].Activate();
+            _levels[index].Restart();
             _bombJack.SetLevel(_levels[index]);
             _bombJack.MoveTo(new Vector2(PLAYGROUND_WIDTH / 2, BOMB_JACK_POSITION_Y));
             _bombJack.MoveDirection = Vector2.Zero;
@@ -99,15 +92,22 @@ namespace BombJack2024
         public void StartBombJack()
         {
             _bombJack.Activate();
-            _bird.SetBombJack(_bombJack);
-            _bird.MoveTo(new Vector2(110, 10));
-            _bird.Activate();
         }
 
         public void NextLevel()
         {
-            _levels[_currentLevelIndex].DeactivateLevel();
+            if (_currentLevelIndex >= 0)
+            {
+                _levels[_currentLevelIndex].Reset();
+                _levels[_currentLevelIndex].DeactivateLevel();
+            }
             _currentLevelIndex = (_currentLevelIndex + 1) % _levels.Count;
+            _levels[_currentLevelIndex].Activate();
+            SetState(STATE_LEVEL_INTRO);
+        }
+
+        private void OnBombJackDie()
+        {
             SetState(STATE_LEVEL_INTRO);
         }
 
@@ -169,6 +169,7 @@ namespace BombJack2024
         private void GameEnter()
         {
             StartBombJack();
+            _levels[_currentLevelIndex].Start(_bombJack);
         }
 
         protected void GameDraw(SpriteBatch batch, GameTime gameTime)
@@ -184,7 +185,20 @@ namespace BombJack2024
             batch.Draw(_levelBackgrounds[backgroundIndex], Vector2.Zero, Color.White);
             batch.Draw(_hud, new Vector2(PLAYGROUND_WIDTH, 0), Color.White);
             DrawComponents(gameTime);
+            //DrawGrid(batch);
             batch.End();
+        }
+
+        private static void DrawGrid(SpriteBatch batch)
+        {
+            for (int i = 0; i <= PLAYGROUND_WIDTH / Bird.GRID_SIZE; i++)
+            {
+                batch.DrawLine(new Vector2(i * Bird.GRID_SIZE, 0), new Vector2(i * Bird.GRID_SIZE, PLAYGROUND_HEIGHT), Color.Black);
+            }
+            for (int i = 0; i <= PLAYGROUND_HEIGHT / Bird.GRID_SIZE; i++)
+            {
+                batch.DrawLine(new Vector2(0, i * Bird.GRID_SIZE), new Vector2(PLAYGROUND_WIDTH, i * Bird.GRID_SIZE), Color.Black);
+            }
         }
 
         #endregion
