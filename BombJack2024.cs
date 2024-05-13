@@ -28,14 +28,19 @@ namespace BombJack2024
         private Texture2D _menu;
         private Texture2D _playerStart;
 
+        private SpriteSheet _robotSprite;
+        private SpriteSheet _snailSprite;
+
         private List<Level> _levels = new();
         private int _currentLevelIndex;
+        public Level CurrentLevel => _levels[_currentLevelIndex];
 
         protected override void Initialize()
         {
             // TODO: Add your initialization logic here
             EventsManager.ListenTo(EVENT_ALL_BOMBS_COLLECTED, OnAllBombsCollected);
             EventsManager.ListenTo(BombJack.DIE_EVENT, OnBombJackDie);
+            EventsManager.ListenTo<Robot>(Robot.ROBOT_DEAD_EVENT, OnRobotDead);
 
             base.Initialize();
         }
@@ -57,6 +62,11 @@ namespace BombJack2024
             _bombJack = new BombJack(bombJackSprite, this);
             Components.Add(_bombJack);
             _bombJack.Deactivate();
+
+            _robotSprite = new SpriteSheet(Content, "robot", 6, 16, new Point(3, 16));
+            _robotSprite.AddLayer(Content, "robot-eye");
+            _snailSprite = new SpriteSheet(Content, "snail", 7, 16, new Point(3, 16));
+            _snailSprite.AddLayer(Content, "snail-eye");
 
             _levelBackgrounds = new Texture2D[2];
             _levelBackgrounds[0] = Content.Load<Texture2D>("egypt");
@@ -98,17 +108,34 @@ namespace BombJack2024
         {
             if (_currentLevelIndex >= 0)
             {
-                _levels[_currentLevelIndex].Reset();
-                _levels[_currentLevelIndex].DeactivateLevel();
+                CurrentLevel.Reset();
+                CurrentLevel.DeactivateLevel();
             }
             _currentLevelIndex = (_currentLevelIndex + 1) % _levels.Count;
-            _levels[_currentLevelIndex].Activate();
+            CurrentLevel.Activate();
             SetState(STATE_LEVEL_INTRO);
         }
 
-        private void OnBombJackDie()
+        private void SpawnRobot()
         {
-            SetState(STATE_LEVEL_INTRO);
+            Enemy robot = new Robot(_robotSprite, this);
+            AddEnemy(robot, CurrentLevel.RobotSpawn);
+        }
+
+        private void SpawnSnail(Vector2 position)
+        {
+            Enemy snail = new Snail(_snailSprite, this);
+            AddEnemy(snail, position);
+        }
+
+        private void AddEnemy(Enemy enemy, Vector2 position)
+        {
+            enemy.SetBombJack(_bombJack);
+            enemy.MoveTo(position);
+            enemy.CurrentLevel = CurrentLevel;
+            Components.Add(enemy);
+            CurrentLevel.Enemies.Add(enemy);
+            enemy.Activate();
         }
 
         #region States
@@ -169,7 +196,9 @@ namespace BombJack2024
         private void GameEnter()
         {
             StartBombJack();
-            _levels[_currentLevelIndex].Start(_bombJack);
+            CurrentLevel.Start(_bombJack);
+
+            SpawnSnail(CurrentLevel.RobotSpawn);
         }
 
         protected void GameDraw(SpriteBatch batch, GameTime gameTime)
@@ -178,7 +207,7 @@ namespace BombJack2024
 
             // TODO: Add your drawing code here
             batch.Begin(samplerState: SamplerState.PointClamp, blendState: BlendState.AlphaBlend);
-            int backgroundIndex = _levels[_currentLevelIndex].BackgroundIndex;
+            int backgroundIndex = CurrentLevel.BackgroundIndex;
             if (backgroundIndex < 0 || backgroundIndex >= _levelBackgrounds.Length)
                 backgroundIndex = 0;
 
@@ -207,6 +236,18 @@ namespace BombJack2024
         private void OnAllBombsCollected()
         {
             NextLevel();
+        }
+
+        private void OnBombJackDie()
+        {
+            SetState(STATE_LEVEL_INTRO);
+        }
+
+        private void OnRobotDead(Robot robot)
+        {
+            Components.Remove(robot);
+            CurrentLevel.Enemies.Remove(robot);
+            SpawnSnail(robot.Position);
         }
         #endregion
     }

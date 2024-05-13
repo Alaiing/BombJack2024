@@ -81,6 +81,7 @@ namespace BombJack2024
         public override void Draw(GameTime gameTime)
         {
             SpriteSheet.DrawFrame((int)Math.Floor(_drawnFrame), SpriteBatch, Position, SpriteSheet.DefaultPivot, 0, CurrentScale, Color.White);
+            //SpriteBatch.DrawRectangle(GetBounds(), Color.Green);
         }
 
         private int _previousY;
@@ -122,7 +123,7 @@ namespace BombJack2024
                 MoveDirection.X = 0;
             }
 
-            if (_currentLevel.TestPlatformCollision(this))
+            if (_currentLevel.TestPlatformCollision(this, out Platform _))
             {
                 SoundEffectInstance platformSoundInstance = _platformSound.CreateInstance();
                 platformSoundInstance.Pan = CommonRandom.Random.Next(-1, 2);
@@ -205,7 +206,7 @@ namespace BombJack2024
                 return;
             }
 
-            if (!IsOnGround() && !IsOnPlatform(out Platform _))
+            if (!IsOnGround() && !_currentLevel.IsOnPlatform(this, out Platform _, partial: true))
             {
                 Fall();
                 return;
@@ -316,7 +317,7 @@ namespace BombJack2024
 
             MoveTo(new Vector2(Position.X, _inAirStartHeight + height));
 
-            if (IsOnPlatform(out Platform platform))
+            if (_currentLevel.IsOnPlatform(this, out Platform platform, partial: true))
             {
                 MoveTo(new Vector2(Position.X, platform.Bounds.Y));
                 PlatformSound();
@@ -347,21 +348,6 @@ namespace BombJack2024
             {
                 EventsManager.FireEvent(DIE_EVENT);
             }
-        }
-
-        private bool IsOnPlatform(out Platform hitPlatform)
-        {
-            foreach (Platform platform in _currentLevel.Plateforms)
-            {
-                if (platform.Bounds.Contains(Position - new Vector2(SpriteSheet.LeftMargin, -1))
-                    || platform.Bounds.Contains(Position + new Vector2(SpriteSheet.RightMargin, 1)))
-                {
-                    hitPlatform = platform;
-                    return true;
-                }
-            }
-            hitPlatform = null;
-            return false;
         }
 
         private bool IsOnGround()

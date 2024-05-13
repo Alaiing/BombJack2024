@@ -7,38 +7,13 @@ namespace BombJack2024
     public class Bird : Enemy
     {
         public const int GRID_SIZE = 20;
+        protected override float StartSpeed => 4;
 
-        private float _startSpeed = 4;
-        private float _maxSpeedMultiplier = 2;
-        private int _previousX;
-
-        private int _frame;
         private bool _collided;
         private Point _collidedGridCell;
 
-        public Level CurrentLevel { get; set; }
-
-        private Color[] _blinkColors = new Color[]
-            {
-            new Color(255, 0, 128),
-            new Color(128,0,0)
-            };
-
-        private float _blinkColorIndex;
-        private float _blinkSpeed = 4;
-
         public Bird(SpriteSheet spriteSheet, Game game) : base(spriteSheet, game)
         {
-            DrawOrder = 1;
-        }
-
-        public override void Reset()
-        {
-            base.Reset();
-            SetBaseSpeed(_startSpeed);
-            SetSpeedMultiplier(1f);
-            SetLayerColor(Color.Red, 1);
-            _blinkColorIndex = 0;
         }
 
         public override void Update(GameTime gameTime)
@@ -52,7 +27,7 @@ namespace BombJack2024
             int X = PixelPositionX / GRID_SIZE;
             int Y = PixelPositionY / GRID_SIZE;
 
-            if (CurrentLevel.TestPlatformCollision(this))
+            if (CurrentLevel.TestPlatformCollision(this, out Platform _))
             {
                 MoveTo(previousPosition);
                 _collided = true;
@@ -97,21 +72,6 @@ namespace BombJack2024
                     SetScale(new Vector2(-Math.Sign(MoveDirection.X), 1));
                 }
             }
-
-            if (_previousX != PixelPositionX)
-            {
-                _frame = (_frame + 1) % SpriteSheet.FrameCount;
-            }
-            _previousX = PixelPositionX;
-
-            _blinkColorIndex = (_blinkColorIndex + _blinkSpeed * deltaTime) % _colors.Length;
-            SetLayerColor(_blinkColors[(int)_blinkColorIndex], 1);
-        }
-
-        public override void Draw(GameTime gameTime)
-        {
-            SpriteSheet.DrawFrame(_frame, SpriteBatch, Position, SpriteSheet.DefaultPivot, 0, CurrentScale, _colors);
-            //SpriteBatch.DrawRectangle(GetBounds(), Color.Red);
         }
     }
 }

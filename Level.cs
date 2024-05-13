@@ -32,6 +32,9 @@ namespace BombJack2024
         private int _backgroundIndex;
         public int BackgroundIndex => _backgroundIndex;
 
+        private Vector2 _robotSpawn;
+        public Vector2 RobotSpawn => _robotSpawn;
+
         private static Bird _bird;
         private static Point[] _birdStartPositions = new Point[]
         {
@@ -97,7 +100,7 @@ namespace BombJack2024
                     string[] split = line.Split('=');
                     string dataName = split[0].Trim();
                     string dataValue = split[1].Trim();
-
+                    string[] coordValues;
                     switch (dataName.ToUpper())
                     {
                         case "BACKGROUND":
@@ -107,17 +110,21 @@ namespace BombJack2024
                             string[] coords = dataValue.Split(';');
                             for (int i = 0; i < coords.Length; i++)
                             {
-                                string[] coordValues = coords[i].Split(",");
+                                coordValues = coords[i].Split(",");
                                 int x = int.Parse(coordValues[0].Trim());
                                 int y = int.Parse(coordValues[1].Trim());
                                 AddBomb(x, y, new Bomb(_bombSheet, _game));
                             }
                             break;
+                        case "ROBOT_SPAWN":
+                            coordValues = dataValue.Split(",");
+                            _robotSpawn = new Vector2(int.Parse(coordValues[0]), int.Parse(coordValues[1]));
+                            break;
                         case "PLATFORMS":
                             string[] data = dataValue.Split(';');
                             for (int i = 0; i < data.Length; i++)
                             {
-                                string[] coordValues = data[i].Split(",");
+                                coordValues = data[i].Split(",");
                                 int x = int.Parse(coordValues[0].Trim());
                                 int y = int.Parse(coordValues[1].Trim());
                                 int size = int.Parse(coordValues[2].Trim());
@@ -252,7 +259,7 @@ namespace BombJack2024
             _bird.Deactivate();
         }
 
-        public bool TestPlatformCollision(Character character)
+        public bool TestPlatformCollision(Character character, out Platform hitPlatform)
         {
             Rectangle bounds = character.GetBounds();
             bounds.Y += 3;
@@ -260,9 +267,28 @@ namespace BombJack2024
             foreach (Platform platform in Plateforms)
             {
                 if (MathUtils.OverlapsWith(bounds, platform.Bounds))
+                {
+                    hitPlatform = platform;
                     return true;
+                }
             }
+            hitPlatform = null;
+            return false;
+        }
 
+        public bool IsOnPlatform(Character character, out Platform hitPlatform, bool partial)
+        {
+            foreach (Platform platform in Plateforms)
+            {
+                bool leftOnPlatform = platform.Bounds.Contains(character.Position + new Vector2(-character.SpriteSheet.LeftMargin, 1));
+                bool rightOnPlatform = platform.Bounds.Contains(character.Position + new Vector2(character.SpriteSheet.RightMargin, 1));
+                if (partial && (leftOnPlatform || rightOnPlatform) || leftOnPlatform && rightOnPlatform)
+                {
+                    hitPlatform = platform;
+                    return true;
+                }
+            }
+            hitPlatform = null;
             return false;
         }
 
