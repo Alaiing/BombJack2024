@@ -25,28 +25,36 @@ namespace BombJack2024
         {
             base.Update(gameTime);
 
-            if (CurrentLevel.TestPlatformCollision(this, out Platform platform))
+            if (TestBorderCollision())
             {
                 MoveTo(_lastSafePosition);
-
-                Rectangle bounds = GetBounds();
-
-                Vector2 centerReboundDirection = bounds.Center.ToVector2() - platform.Bounds.Center.ToVector2();
-
-                float platformTangent = (float)platform.Bounds.Height / platform.Bounds.Width;
-
-                if (centerReboundDirection.Y == 0 || MathF.Abs(centerReboundDirection.Y) / MathF.Abs(centerReboundDirection.X) < platformTangent)
-                {
-                    Velocity.X = -Velocity.X * REBOUND;
-                }
-                else
-                {
-                    Velocity.Y = -Velocity.Y * REBOUND;
-                }
+                Velocity = Vector2.Zero;
             }
             else
             {
-                _lastSafePosition = Position;
+                if (CurrentLevel.TestPlatformCollision(this, out Platform platform))
+                {
+                    MoveTo(_lastSafePosition);
+
+                    Rectangle bounds = GetBounds();
+
+                    Vector2 centerReboundDirection = bounds.Center.ToVector2() - platform.Bounds.Center.ToVector2();
+
+                    float platformTangent = (float)platform.Bounds.Height / platform.Bounds.Width;
+
+                    if (centerReboundDirection.Y == 0 || MathF.Abs(centerReboundDirection.Y) / MathF.Abs(centerReboundDirection.X) < platformTangent)
+                    {
+                        Velocity.X = -Velocity.X * REBOUND;
+                    }
+                    else
+                    {
+                        Velocity.Y = -Velocity.Y * REBOUND;
+                    }
+                }
+                else
+                {
+                    _lastSafePosition = Position;
+                }
             }
 
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -58,9 +66,18 @@ namespace BombJack2024
             Vector2 newPosition = 0.5f * deltaTime * deltaTime * force + deltaTime * Velocity + Position;
             Velocity = deltaTime * force + Velocity;
 
-            Velocity = MathF.Min(Velocity.Length(), MAX_SPEED) * Vector2.Normalize(Velocity);
+            Velocity = MathF.Min(Velocity.Length(), MAX_SPEED) * Vector2.Normalize(Velocity) * _speedMultiplierOverTime;
 
             MoveTo(newPosition);
+        }
+
+        protected override void UpdateFrame()
+        {
+            if (_previousX != PixelPositionX)
+            {
+                _frame = (_frame + SpriteSheet.FrameCount + Math.Sign(PixelPositionX - _previousX)) % SpriteSheet.FrameCount;
+            }
+
         }
     }
 }

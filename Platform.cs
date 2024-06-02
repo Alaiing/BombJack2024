@@ -14,6 +14,7 @@ namespace BombJack2024
         private bool _horizontal;
         private int _size;
         private Point _position;
+        public Vector2 Position => _position.ToVector2();
         private Texture2D _innerTexture;
         private Texture2D _leftTexture;
         private Texture2D _rightTexture;

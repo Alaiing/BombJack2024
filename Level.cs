@@ -35,6 +35,8 @@ namespace BombJack2024
         private Vector2 _robotSpawn;
         public Vector2 RobotSpawn => _robotSpawn;
 
+        public float LevelTime { get; set; }
+
         private static Bird _bird;
         private static Point[] _birdStartPositions = new Point[]
         {
@@ -67,6 +69,7 @@ namespace BombJack2024
             _bird.MoveTo(_birdStartPositions[positionIndex].ToVector2());
             _bird.SetBombJack(bombJack);
             AddEnemy(_bird);
+            LevelTime = 0;
         }
 
         public void Update()
@@ -78,6 +81,7 @@ namespace BombJack2024
         {
             _bombsFound = 0;
             ResetBombs();
+            ClearEnemies();
         }
 
         public void Restart()
@@ -177,6 +181,14 @@ namespace BombJack2024
             }
 
             _enemies.Clear();
+        }
+
+        public void FreezeEnemies(bool freeze)
+        {
+            foreach(Enemy enemy in _enemies)
+            {
+                enemy.Enabled = !freeze;
+            }
         }
 
         public bool PickUpBomb(int index)

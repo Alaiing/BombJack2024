@@ -19,6 +19,12 @@ namespace BombJack2024
         private const string FALL_STATE = "Fall";
         private const string DIE_STATE = "Die";
 
+        private const int UNLIT_BOMB_SCORE = 100;
+        private const int LIT_BOMB_SCORE = 200;
+        private const int JUMP_SCORE = 10;
+
+        private const int STARTING_LIVES = 3;
+
         private SimpleStateMachine _stateMachine;
         private float _drawnFrame;
         private float _walkAnimationSpeed = 10f;
@@ -41,6 +47,11 @@ namespace BombJack2024
         private float _jumpSoundTimer;
 
         private Level _currentLevel;
+
+        private int _score;
+        public int Score => _score;
+        private int _lives;
+        public int RemainingLives => _lives;
 
         public BombJack(SpriteSheet spriteSheet, Game game) : base(spriteSheet, game)
         {
@@ -145,15 +156,25 @@ namespace BombJack2024
 
             if (TestBombCollision(out int index))
             {
+                if (_currentLevel.Bombs[index].IsLit)
+                {
+                    AddScore(LIT_BOMB_SCORE);
+                    EventsManager.FireEvent(BombJack2024.LIT_BOMB_SCORE_EVENT, _currentLevel.Bombs[index].Position);
+                }
+                else
+                {
+                    AddScore(UNLIT_BOMB_SCORE);
+                }
+
                 if (_currentLevel.PickUpBomb(index))
                 {
-                    // TODO: scoring
                     EventsManager.FireEvent(BombJack2024.EVENT_ALL_BOMBS_COLLECTED);
                 }
             }
 
             if (TestEnemyCollision())
             {
+                _currentLevel.FreezeEnemies(true);
                 Die();
                 return false;
             }
@@ -193,6 +214,36 @@ namespace BombJack2024
             _platformSoundInstance.Play();
         }
 
+        #region Lives
+        public void ResetLives()
+        {
+            _lives = STARTING_LIVES;
+        }
+
+        public void AddLife()
+        {
+            _lives++;
+        }
+
+        public void RemoveLife()
+        {
+            _lives--;
+        }
+
+        #endregion
+
+        #region Scoring
+        public void ResetScore()
+        {
+            _score = 0;
+        }
+
+        public void AddScore(int score)
+        {
+            _score += score;
+        }
+        #endregion
+
         #region States
         private void WalkEnter()
         {
@@ -220,6 +271,7 @@ namespace BombJack2024
             if (SimpleControls.IsAPressedThisFrame(PlayerIndex.One))
             {
                 Jump(JUMP_HEIGHT, MAX_JUMP_HEIGHT);
+                AddScore(JUMP_SCORE);
             }
         }
 

@@ -33,13 +33,11 @@ namespace BombJack2024
         public override void Initialize()
         {
             base.Initialize();
+            SetBaseSpeed(StartSpeed);
             _stateMachine.AddState(STATE_WALK, OnEnter: WalkEnter, OnUpdate: WalkUpdate);
             _stateMachine.AddState(STATE_FALL, OnEnter: FallEnter, OnUpdate: FallUpdate);
 
             _stateMachine.SetState(STATE_FALL);
-
-            SetBaseSpeed(20f);
-            SetSpeedMultiplier(1f);
         }
 
         private void FallUpdate(GameTime gameTime, float stateTime)
@@ -66,6 +64,7 @@ namespace BombJack2024
 
         private void WalkUpdate(GameTime gameTime, float stateTime)
         {
+            SetSpeedMultiplier(_speedMultiplierOverTime);
             if (!CurrentLevel.IsOnPlatform(this, out Platform _, partial: !CanTurn))
             {
                 if (CanTurn)
@@ -83,7 +82,6 @@ namespace BombJack2024
         private void WalkEnter()
         {
             MoveDirection = new Vector2(CurrentScale.X, 0);
-            SetSpeedMultiplier(1f);
         }
 
         public override void Update(GameTime gameTime)

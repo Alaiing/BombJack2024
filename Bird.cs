@@ -7,7 +7,7 @@ namespace BombJack2024
     public class Bird : Enemy
     {
         public const int GRID_SIZE = 20;
-        protected override float StartSpeed => 4;
+        protected override float StartSpeed => 8;
 
         private bool _collided;
         private Point _collidedGridCell;
@@ -19,6 +19,7 @@ namespace BombJack2024
         public override void Update(GameTime gameTime)
         {
             base.Update(gameTime);
+            SetSpeedMultiplier(_speedMultiplierOverTime);
 
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
             Vector2 previousPosition = Position;
