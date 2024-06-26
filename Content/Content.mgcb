@@ -97,6 +97,18 @@
 /processorParam:TextureFormat=Color
 /build:bomb_score_2.png
 
+#begin bomb_score.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:bomb_score.png
+
 #begin bomb.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -120,6 +132,60 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:bombjack.png
+
+#begin bonus-B.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:bonus-B.png
+
+#begin bonus-E.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:bonus-E.png
+
+#begin bonus-font.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:bonus-font.png
+
+#begin bonus-P.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:bonus-P.png
+
+#begin bouipbouipbouip.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:bouipbouipbouip.wav
 
 #begin digits.png
 /importer:TextureImporter
@@ -169,6 +235,18 @@
 /processorParam:TextureFormat=Color
 /build:game_over.png
 
+#begin germany.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:germany.png
+
 #begin greece.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -217,6 +295,18 @@
 /processorParam:TextureFormat=Color
 /build:left_platform_h.png
 
+#begin lemon.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:lemon.png
+
 #begin life_icon.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -258,6 +348,24 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:player-start.png
+
+#begin poumtrrrr.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:poumtrrrr.wav
+
+#begin poutoumdoum.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:poutoumdoum.wav
+
+#begin prrouiiii.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:prrouiiii.wav
 
 #begin right_platform_h.png
 /importer:TextureImporter
@@ -343,6 +451,24 @@
 /processorParam:TextureFormat=Color
 /build:snail.png
 
+#begin tchountchountchountchien.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:tchountchountchountchien.wav
+
+#begin tchoutchou.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:tchoutchou.wav
+
+#begin teuhuu.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:teuhuu.wav
+
 #begin title.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -354,6 +480,12 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:title.png
+
+#begin toudoudou.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:toudoudou.wav
 
 #begin zboui.wav
 /importer:WavImporter

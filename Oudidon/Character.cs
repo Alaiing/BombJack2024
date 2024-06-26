@@ -130,7 +130,7 @@ namespace Oudidon
 
         public void SetFrame(int frameIndex)
         {
-            if (!string.IsNullOrEmpty(_currentAnimationName) && frameIndex > 0 && frameIndex < _currentAnimation.FrameCount)
+            if (!string.IsNullOrEmpty(_currentAnimationName) && frameIndex >= 0 && frameIndex < _currentAnimation.FrameCount)
             {
                 _currentFrame = frameIndex;
             }

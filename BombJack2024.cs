@@ -1,15 +1,19 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Oudidon;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace BombJack2024
 {
     public class BombJack2024 : OudidonGame
     {
         public const string EVENT_ALL_BOMBS_COLLECTED = "AllBombsCollected";
+        public const string EVENT_BOMB_COLLECTED = "BombCollected";
 
         public const string STATE_TITLE = "Title";
         public const string STATE_MENU = "Menu";
@@ -27,7 +31,14 @@ namespace BombJack2024
         public const int MAX_ROBOTS = 4;
         public const int MAX_SNAILS = 3;
 
+        public const float MIN_BONUS_SPAWN_TIMER = 2f;
+        public const float MAX_BONUS_SPAWN_TIMER = 10f;
+
+        public const float BONUS_P_DURATION = 5f;
+
         private BombJack _bombJack;
+        private FallingBonus _bonus;
+        private BouncingBonus _bonusP;
 
         private Character _explosion;
 
@@ -51,7 +62,37 @@ namespace BombJack2024
         private SpriteSheet _bombScore1;
         private SpriteSheet _bombScore2;
 
+        private SpriteSheet _bonusESprite;
+        private SpriteSheet _bonusBSprite;
+        private SpriteSheet _bonusPSprite;
+        private float _bonusPTimer;
+        private int _bonusPGauge;
+        private bool _bonusPSpawned;
+        private SpriteSheet _lemonSprite;
+
+        private enum BonusType { B, E };
+        private const float _bonusPChance = 0.2f;
+        private const float _bonusEChance = 0.2f;
+        private const float _bonusBChance = 0.6f;
+        private List<BonusType> _bonusTable = new();
+
         private SpriteFont _digits;
+        private SpriteFont _bonusFont;
+
+        private SoundEffect _spawnSound;
+        private SoundEffectInstance _spawnSoundInstance;
+        private SoundEffect _explosionSound;
+        private SoundEffectInstance _explosionSoundInstance;
+        private SoundEffect _bonusBSound;
+        private SoundEffectInstance _bonusBSoundInstance;
+        private SoundEffect _bonusESound;
+        private SoundEffectInstance _bonusESoundInstance;
+        private SoundEffect _bonusPSound;
+        private SoundEffectInstance _bonusPSoundInstance;
+        private SoundEffect _bonusPCollectSound;
+        private SoundEffectInstance _bonusPCollectSoundInstance;
+        private SoundEffect _lemonCollectSound;
+        private SoundEffectInstance _lemonCollectSoundInstance;
 
         public Level CurrentLevel => _levels[_currentLevelIndex];
 
@@ -61,7 +102,10 @@ namespace BombJack2024
             EventsManager.ListenTo(EVENT_ALL_BOMBS_COLLECTED, OnAllBombsCollected);
             EventsManager.ListenTo(BombJack.DIE_EVENT, OnBombJackDie);
             EventsManager.ListenTo<Robot>(Robot.ROBOT_DEAD_EVENT, OnRobotDead);
+            EventsManager.ListenTo<bool>(EVENT_BOMB_COLLECTED, BombCollected);
             EventsManager.ListenTo<Vector2>(LIT_BOMB_SCORE_EVENT, SpawnLitBombScore);
+            EventsManager.ListenTo<Lemon>(Lemon.LEMON_COLLECTED_EVENT, OnLemonCollected);
+            InitBonusTable(10);
 
             base.Initialize();
         }
@@ -71,7 +115,7 @@ namespace BombJack2024
             AddState(STATE_TITLE, onUpdate: TitleUpdate, onDraw: TitleDraw);
             AddState(STATE_MENU, onUpdate: MenuUpdate, onDraw: MenuDraw);
             AddState(STATE_LEVEL_INTRO, onEnter: LevelIntroEnter, onUpdate: LevelIntroUpdate, onDraw: LevelIntroDraw);
-            AddState(STATE_IN_GAME, onEnter: GameEnter, onUpdate: GameUpdate, onDraw: GameDraw);
+            AddState(STATE_IN_GAME, onEnter: GameEnter, onExit : GameExit, onUpdate: GameUpdate, onDraw: GameDraw);
             AddState(STATE_GAME_OVER, onEnter: GameOverEnter, onUpdate: GameOverUpdate, onExit: GameOverExit, onDraw: GameOverDraw);
         }
 
@@ -100,9 +144,10 @@ namespace BombJack2024
             Components.Add(_explosion);
             _explosion.Deactivate();
 
-            _levelBackgrounds = new Texture2D[2];
+            _levelBackgrounds = new Texture2D[3];
             _levelBackgrounds[0] = Content.Load<Texture2D>("egypt");
             _levelBackgrounds[1] = Content.Load<Texture2D>("greece");
+            _levelBackgrounds[2] = Content.Load<Texture2D>("germany");
 
             _hud = Content.Load<Texture2D>("hud");
             _title = Content.Load<Texture2D>("title");
@@ -110,20 +155,68 @@ namespace BombJack2024
 
             _playerStart = Content.Load<Texture2D>("player-start");
             _gameOver = Content.Load<Texture2D>("game_over");
-            
+
             _lifeIcon = Content.Load<Texture2D>("life_icon");
 
             _digits = CreateSpriteFont("digits", " 0123456789", width: 5, height: 8);
+            _bonusFont = CreateSpriteFont("bonus-font", "23456789x", width: 3, height: 5);
 
-            _bombScore1 = new SpriteSheet(Content, "bomb_score_1", 8, 5, Point.Zero);
+            _bombScore1 = new SpriteSheet(Content, "bomb_score", 8, 5, Point.Zero);
             _bombScore1.RegisterAnimation("Idle", 0, 3, 10);
-            _bombScore2 = new SpriteSheet(Content, "bomb_score_2", 8, 5, Point.Zero);
-            _bombScore2.RegisterAnimation("Idle", 0, 3, 8);
+
+            _bonusESprite = new SpriteSheet(Content, "bonus-E", 7, 13, new Point(3, 13));
+            _bonusESprite.RegisterAnimation(Bonus.ANIMATION_IDLE, 0, 2, 8);
+
+            _bonusBSprite = new SpriteSheet(Content, "bonus-B", 7, 13, new Point(3, 13));
+            _bonusBSprite.RegisterAnimation(Bonus.ANIMATION_IDLE, 0, 2, 8);
+
+            _bonusPSprite = new SpriteSheet(Content, "bonus-P", 7, 13, new Point(3, 13));
+            _bonusPSprite.RegisterAnimation(Bonus.ANIMATION_IDLE, 0, 3, 16);
+
+            _lemonSprite = new SpriteSheet(Content, "lemon", 8, 16, new Point(4, 16));
+            _lemonSprite.RegisterAnimation(Lemon.ANIMATION_IDLE, 0, 3, 8);
+            _lemonSprite.RegisterAnimation(Lemon.ANIMATION_ENDING, 4, 7, 8);
+
+            _bonus = new FallingBonus(_bonusESprite, this, _bombJack);
+            Components.Add(_bonus);
+            _bonus.Deactivate();
+
+            _bonusP = new BouncingBonus(_bonusPSprite, this, _bombJack);
+            Components.Add(_bonusP);
+            _bonusP.Deactivate();
+
+            _spawnSound = Content.Load<SoundEffect>("teuhuu");
+            _spawnSoundInstance = _spawnSound.CreateInstance();
+            _explosionSound = Content.Load<SoundEffect>("prrouiiii");
+            _explosionSoundInstance = _explosionSound.CreateInstance();
+            _bonusBSound = Content.Load<SoundEffect>("poumtrrrr");
+            _bonusBSoundInstance = _bonusBSound.CreateInstance();
+            _bonusESound = Content.Load<SoundEffect>("tchountchountchountchien");
+            _bonusESoundInstance = _bonusESound.CreateInstance();
+            _bonusPSound = Content.Load<SoundEffect>("tchoutchou");
+            _bonusPSoundInstance = _bonusPSound.CreateInstance();
+            _bonusPSoundInstance.IsLooped = true;
+            _bonusPCollectSound = Content.Load<SoundEffect>("bouipbouipbouip");
+            _bonusPCollectSoundInstance = _bonusPCollectSound.CreateInstance();
+            _lemonCollectSound = Content.Load<SoundEffect>("poutoumdoum");
 
             _levels.Add(new Level(this, "level1.data"));
             _levels.Add(new Level(this, "level2.data"));
+            _levels.Add(new Level(this, "level3.data"));
 
             SetState(STATE_TITLE);
+        }
+
+        private void InitBonusTable(int amount)
+        {
+            for (int i = 0; i < amount * _bonusBChance; i++)
+            {
+                _bonusTable.Add(BonusType.B);
+            }
+            for (int i = 0; i < amount * _bonusEChance; i++)
+            {
+                _bonusTable.Add(BonusType.E);
+            }
         }
 
         private SpriteFont CreateSpriteFont(string fontAsset, string charsString, int width, int height)
@@ -140,7 +233,7 @@ namespace BombJack2024
                 cropping.Add(new Rectangle(0, 0, width, height));
                 kerning.Add(new Vector3(1, width, 0));
             }
-            return new SpriteFont(fontTexture, glyphBounds, cropping, chars, 0, 0, kerning, '0');
+            return new SpriteFont(fontTexture, glyphBounds, cropping, chars, 0, 0, kerning, '2');
         }
 
         public void StartGame()
@@ -166,11 +259,61 @@ namespace BombJack2024
             _bombJack.Activate();
         }
 
+        private void SpawnRandomBonus()
+        {
+            BonusType randomType = _bonusTable[CommonRandom.Random.Next(_bonusTable.Count)];
+
+            switch (randomType)
+            {
+                case BonusType.B:
+                    SpawnBonusB();
+                    break;
+                case BonusType.E:
+                    SpawnBonusE();
+                    break;
+            }
+        }
+
+        private void SpawnBonusE()
+        {
+            _bonus.Spawn(_bonusESprite, ExtraLife, CurrentLevel, new Vector2(118, 23));
+        }
+
+        private void ExtraLife()
+        {
+            _bombJack.AddLife();
+            _bombJack.AddScore(Bonus.BONUS_E_SCORE);
+            _bonusESoundInstance.Stop();
+            _bonusESoundInstance.Play();
+        }
+
+        private void SpawnBonusB()
+        {
+            _bonus.Spawn(_bonusBSprite, IncreaseBonusRank, CurrentLevel, new Vector2(118, 23));
+        }
+
+        private void SpawnBonusP()
+        {
+            _bonusPSoundInstance.Play();
+            _bonusP.Spawn(_bonusPSprite, SpawnLemons, CurrentLevel, new Vector2(PLAYGROUND_WIDTH / 2, _bonusPSprite.TopMargin));
+        }
+
+        private void IncreaseBonusRank()
+        {
+            _bonusBSoundInstance.Stop();
+            _bonusBSoundInstance.Play();
+            _bombJack.AddScore(Bonus.BONUS_B_SCORE);
+            _bombJack.ScoreBonusRank++;
+        }
+
         public void NextLevel()
         {
+            _bombJack.ScoreBonusRank = 0;
             if (_currentLevelIndex >= 0)
             {
                 CurrentLevel.Reset();
+                ClearLemons();
+                _explosion.Deactivate();
                 CurrentLevel.DeactivateLevel();
             }
             _currentLevelIndex = (_currentLevelIndex + 1) % _levels.Count;
@@ -222,10 +365,19 @@ namespace BombJack2024
             enemy.Activate();
         }
 
+        private void RemoveEnemy(Enemy enemy)
+        {
+            Components.Remove(enemy);
+            CurrentLevel.Enemies.Remove(enemy);
+        }
+
         private int _explosionAnimationCount;
         private Action<Vector2> _onExplosionEnd;
         private void SpawnExplosion(Vector2 position, Action<Vector2> onExplosionEnd)
         {
+            if (_bonusPTimer > 0)
+                return;
+
             _explosion.MoveTo(position);
             _explosion.Activate();
             _explosionAnimationCount = 0;
@@ -239,23 +391,69 @@ namespace BombJack2024
             _explosionAnimationCount++;
             if (_explosionAnimationCount >= 4)
             {
+                if (_bonusPTimer > 0)
+                    return;
+
                 _explosion.Deactivate();
                 _onExplosionEnd?.Invoke(_explosion.Position);
             }
         }
 
-        private void SpawnLitBombScore(Vector2 position)
+        private void BombCollected(bool lit)
         {
-            Character bombScore1 = new Character(_bombScore1, this);
-            Character bombScore2 = new Character(_bombScore2, this);
-            Components.Add(bombScore1);
-            Components.Add(bombScore2);
-            bombScore1.MoveTo(position);
-            bombScore2.MoveTo(position);
-            bombScore1.SetAnimation("Idle", onAnimationEnd: () => Components.Remove(bombScore1));
-            bombScore2.SetAnimation("Idle", onAnimationEnd: () => Components.Remove(bombScore2));
+            if (_bonusPSpawned)
+                return;
+
+            _bonusPGauge += lit ? 2 : 1;
+            if (_bonusPGauge > 20 && !_bonus.Enabled)
+            {
+                SpawnBonusP();
+                _bonusPSpawned = true;
+            }
         }
 
+        private void SpawnLitBombScore(Vector2 position)
+        {
+            BombScore.SpawnScore(_bombScore1, this, _bonusFont, position, _bombJack.ScoreBonusRank);
+        }
+
+        private List<Lemon> _lemons = new();
+        private void SpawnLemons()
+        {
+            _bonusPSoundInstance.Stop();
+            _bonusPCollectSoundInstance.Play();
+            _bonusPTimer = BONUS_P_DURATION;
+            foreach (Enemy enemy in CurrentLevel.Enemies)
+            {
+                Lemon lemon = new Lemon(_lemonSprite, this);
+                lemon.Spawn(enemy, _bombJack, BONUS_P_DURATION);
+                _lemons.Add(lemon);
+            }
+            _bombJack.AddScore(Bonus.BONUS_P_SCORE);
+        }
+
+        private void OnLemonCollected(Lemon lemon)
+        {
+            SoundEffectInstance lemonCollectSoundInstance = _lemonCollectSound.CreateInstance();
+            lemonCollectSoundInstance.Pan = CommonRandom.Random.Next(-1, 2);
+            lemonCollectSoundInstance.Play();
+            RemoveEnemy(lemon.Enemy);
+            if (lemon.Enemy is not Bird)
+            {
+                _robotCount--;
+            }
+            _bombJack.AddScore(BombJack.LEMON_SCORE);
+            _lemons.Remove(lemon);
+        }
+
+        private void ClearLemons()
+        {
+            foreach (Lemon lemon in _lemons)
+            {
+                Components.Remove(lemon);
+            }
+            _lemons.Clear();
+        }
         #region States
         private void TitleUpdate(GameTime time, float stateTime)
         {
@@ -293,6 +491,7 @@ namespace BombJack2024
         private void LevelIntroEnter()
         {
             _bombJack.Deactivate();
+            _bonus.Deactivate();
             StartLevel(_currentLevelIndex);
         }
 
@@ -336,25 +535,62 @@ namespace BombJack2024
 
 
         private float _spawnTimer;
+        private float _bonusSpawnTimer;
         private void GameEnter()
         {
             StartBombJack();
             CurrentLevel.Start(_bombJack);
             _spawnTimer = 0;
+            _bonusPGauge = 0;
+            _bonusPSpawned = false;
+            SetBonusSpawnTimer();
             _robotCount = 0;
             _snailCount = 0;
+        }
+
+        private void GameExit()
+        {
+            BombScore.ClearScores(this);
         }
 
         private void GameUpdate(GameTime gameTime, float stateTime)
         {
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
-            _spawnTimer += deltaTime;
-            if (_robotCount < MAX_ROBOTS && _spawnTimer > SPAWN_PERIOD)
+
+            if (_bonusPTimer > 0 && _bonusPTimer < deltaTime)
             {
-                SpawnExplosion(CurrentLevel.RobotSpawn, onExplosionEnd: SpawnRobot);
-                _spawnTimer -= SPAWN_PERIOD;
+                CurrentLevel.RespawnEnemies();
+                _spawnTimer = 0;
+            }
+
+            _bonusPTimer -= deltaTime;
+            if (_bonusPTimer <= 0 && _robotCount < MAX_ROBOTS)
+            {
+                _spawnTimer += deltaTime;
+                if (_spawnTimer > SPAWN_PERIOD)
+                {
+                    SpawnExplosion(CurrentLevel.RobotSpawn, onExplosionEnd: SpawnRobot);
+                    _spawnSoundInstance.Stop();
+                    _spawnSoundInstance.Play();
+                    _spawnTimer -= SPAWN_PERIOD;
+                }
+            }
+
+            if (!_bonus.Enabled && !_bonusP.Enabled && _bombJack.ScoreBonusRank < 3)
+            {
+                _bonusSpawnTimer -= deltaTime;
+                if (_bonusSpawnTimer <= 0)
+                {
+                    SpawnRandomBonus();
+                    SetBonusSpawnTimer();
+                }
             }
             CurrentLevel.LevelTime += deltaTime;
+        }
+
+        private void SetBonusSpawnTimer()
+        {
+            _bonusSpawnTimer = MathHelper.Lerp(MIN_BONUS_SPAWN_TIMER, MAX_BONUS_SPAWN_TIMER, (float)Math.Clamp(MathUtils.NextGaussian(mu: 2) / 4, 0, 1));
         }
 
         protected void GameDraw(SpriteBatch batch, GameTime gameTime)
@@ -371,9 +607,9 @@ namespace BombJack2024
             batch.Draw(_hud, new Vector2(PLAYGROUND_WIDTH, 0), Color.White);
             batch.DrawString(_digits, _bombJack.Score.ToString().PadLeft(6, ' '), new Vector2(124, 20), Color.White);
 
-            for(int i = 0; i< _bombJack.RemainingLives; i++)
+            for (int i = 0; i < Math.Min(_bombJack.RemainingLives, 4); i++)
             {
-                batch.Draw(_lifeIcon, new Vector2(150 - i*(_lifeIcon.Width + 1),28), Color.White);
+                batch.Draw(_lifeIcon, new Vector2(150 - i * (_lifeIcon.Width + 1), 28), Color.White);
             }
 
             DrawComponents(gameTime);
@@ -392,6 +628,7 @@ namespace BombJack2024
                 batch.DrawLine(new Vector2(0, i * Bird.GRID_SIZE), new Vector2(PLAYGROUND_WIDTH, i * Bird.GRID_SIZE), Color.Black);
             }
         }
+
 
         #endregion
 
@@ -417,7 +654,8 @@ namespace BombJack2024
         {
             Components.Remove(robot);
             CurrentLevel.Enemies.Remove(robot);
-
+            _explosionSoundInstance.Stop();
+            _explosionSoundInstance.Play();
             if (_snailCount < MAX_SNAILS)
             {
                 SpawnExplosion(robot.Position, SpawnBall);

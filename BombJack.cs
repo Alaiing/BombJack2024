@@ -19,16 +19,17 @@ namespace BombJack2024
         private const string FALL_STATE = "Fall";
         private const string DIE_STATE = "Die";
 
-        private const int UNLIT_BOMB_SCORE = 100;
-        private const int LIT_BOMB_SCORE = 200;
-        private const int JUMP_SCORE = 10;
+        public const int LEMON_SCORE = 100;
+        public const int UNLIT_BOMB_SCORE = 100;
+        public const int LIT_BOMB_SCORE = 200;
+        public const int JUMP_SCORE = 10;
 
         private const int STARTING_LIVES = 3;
 
         private SimpleStateMachine _stateMachine;
         private float _drawnFrame;
         private float _walkAnimationSpeed = 10f;
-        private const float JUMP_DURATION = 1f;
+        private const float JUMP_DURATION = 1.5f;
         private const float DIE_JUMP_DURATION = 0.25f;
         private const float DIE_DURATION = 1f;
         private const int JUMP_HEIGHT = 128;
@@ -50,6 +51,7 @@ namespace BombJack2024
 
         private int _score;
         public int Score => _score;
+        public int ScoreBonusRank { get; set; }
         private int _lives;
         public int RemainingLives => _lives;
 
@@ -57,6 +59,7 @@ namespace BombJack2024
         {
             _stateMachine = new SimpleStateMachine();
             Initialize();
+            DrawOrder = 99;
         }
 
         public override void Initialize()
@@ -69,7 +72,7 @@ namespace BombJack2024
 
             _stateMachine.SetState(WALK_STATE);
 
-            SetBaseSpeed(20f);
+            SetBaseSpeed(15f);
             SetSpeedMultiplier(1f);
         }
 
@@ -91,7 +94,7 @@ namespace BombJack2024
 
         public override void Draw(GameTime gameTime)
         {
-            SpriteSheet.DrawFrame((int)Math.Floor(_drawnFrame), SpriteBatch, Position, SpriteSheet.DefaultPivot, 0, CurrentScale, Color.White);
+            SpriteSheet.DrawFrame((int)Math.Floor(_drawnFrame), SpriteBatch, new Vector2(PixelPositionX, PixelPositionY), SpriteSheet.DefaultPivot, 0, CurrentScale, Color.White);
             //SpriteBatch.DrawRectangle(GetBounds(), Color.Green);
         }
 
@@ -158,7 +161,7 @@ namespace BombJack2024
             {
                 if (_currentLevel.Bombs[index].IsLit)
                 {
-                    AddScore(LIT_BOMB_SCORE);
+                    AddScore(LIT_BOMB_SCORE * (ScoreBonusRank + 1));
                     EventsManager.FireEvent(BombJack2024.LIT_BOMB_SCORE_EVENT, _currentLevel.Bombs[index].Position);
                 }
                 else
@@ -169,6 +172,10 @@ namespace BombJack2024
                 if (_currentLevel.PickUpBomb(index))
                 {
                     EventsManager.FireEvent(BombJack2024.EVENT_ALL_BOMBS_COLLECTED);
+                }
+                else
+                {
+                    EventsManager.FireEvent(BombJack2024.EVENT_BOMB_COLLECTED, _currentLevel.Bombs[index].IsLit);
                 }
             }
 

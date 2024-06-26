@@ -65,6 +65,13 @@ namespace BombJack2024
         private void WalkUpdate(GameTime gameTime, float stateTime)
         {
             SetSpeedMultiplier(_speedMultiplierOverTime);
+            if (Position.X - SpriteSheet.LeftMargin <= 0 || Position.X + SpriteSheet.RightMargin >= BombJack2024.PLAYGROUND_WIDTH)
+            {
+                MoveDirection = new Vector2(-MoveDirection.X, 0);
+                _turnCount++;
+                return;
+            }
+
             if (!CurrentLevel.IsOnPlatform(this, out Platform _, partial: !CanTurn))
             {
                 if (CanTurn)

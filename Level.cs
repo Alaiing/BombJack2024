@@ -65,11 +65,17 @@ namespace BombJack2024
 
         public void Start(BombJack bombJack)
         {
+            _bird.SetBombJack(bombJack);
+            SpawnBird();
+            LevelTime = 0;
+        }
+
+        private void SpawnBird()
+        {
             int positionIndex = CommonRandom.Random.Next(_birdStartPositions.Length);
             _bird.MoveTo(_birdStartPositions[positionIndex].ToVector2());
-            _bird.SetBombJack(bombJack);
             AddEnemy(_bird);
-            LevelTime = 0;
+            _bird.Activate();
         }
 
         public void Update()
@@ -188,6 +194,14 @@ namespace BombJack2024
             foreach(Enemy enemy in _enemies)
             {
                 enemy.Enabled = !freeze;
+            }
+        }
+
+        public void RespawnEnemies()
+        {
+            if (!_enemies.Contains(_bird))
+            {
+                SpawnBird();
             }
         }
 

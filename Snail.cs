@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Oudidon;
 using System;
 using System.Collections.Generic;
@@ -12,12 +13,21 @@ namespace BombJack2024
     public class Snail : Enemy
     {
         private Vector2 Velocity;
-        private const float MAX_SPEED = 20;
+        private const float MAX_SPEED = 10;
         private const float FORCE = 50;
         private const float REBOUND = 10;
 
+        private static SoundEffect _bumpSound;
+        private SoundEffectInstance _bumpSoundInstance;
+
+
         public Snail(SpriteSheet spriteSheet, Game game) : base(spriteSheet, game)
         {
+            if (_bumpSound == null)
+            {
+                _bumpSound = game.Content.Load<SoundEffect>("toudoudou");
+            }
+            _bumpSoundInstance = _bumpSound.CreateInstance();
         }
 
         private Vector2 _lastSafePosition;
@@ -50,6 +60,10 @@ namespace BombJack2024
                     {
                         Velocity.Y = -Velocity.Y * REBOUND;
                     }
+
+                    _bumpSoundInstance.Pan = CommonRandom.Random.Next(-1, 2);
+                    _bumpSoundInstance.Stop();
+                    _bumpSoundInstance.Play();
                 }
                 else
                 {
